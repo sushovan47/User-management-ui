@@ -1,0 +1,15 @@
+.footer {
+    width: 100%;
+    /* full width */
+    background: #222;
+    /* dark background */
+    color: #ccc;
+    padding: 1rem;
+    text-align: center;
+    position: fixed;
+    /* keeps it always visible */
+    bottom: 0;
+    /* stick to bottom */
+    left: 0;
+    right: 0
+}
