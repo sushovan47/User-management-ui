@@ -1,132 +1,229 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from "react-router-dom";
+import './ForgotPassword.css';
+import { fetchEmailByUserById, generateOtpAndSendMail } from '../../service/login/loginService';
+import LoadingOverlay from '../common/LoadingOverlay';
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+    const [email, setEmail] = useState('');
+    const [otp, setOtp] = useState(new Array(6).fill(""));
+    const [apiMessage, setApiMessage] = useState({ type: '', text: '' });
+    const [timer, setTimer] = useState(0);
+    const [buttonText, setButtonText] = useState("Send OTP");
+    const [isButtonDisabled, setIsButtonDisabled] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isEmailDisabled, setIsEmailDisabled] = useState(true);
 
-  const validateEmail = (value) => {
-    return /^\S+@\S+\.\S+$/.test(value);
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
+    const location = useLocation();
+    const userId = location.state?.userId || "";
 
-    if (!email) {
-      setError('Please enter your email address.');
-      return;
-    }
+    useEffect(() => {
+        const fetchData = async () => {
 
-    if (!validateEmail(email)) {
-      setError('Please enter a valid email address.');
-      return;
-    }
+            setIsLoading(true);
+            if (userId) {
+                console.log("Got userId from Login:", userId);
+                try {
+                    const result = await fetchEmailByUserById(userId);
+                    if (result.success || (result.data != undefined && result.data.iSuccess)) {
+                        const userList = result.data.data || [];
+                        const exactUserDataSet = userList.find(user => String(user.userId) === String(userId));
+                        if (exactUserDataSet.email != undefined && exactUserDataSet.email != null) {
+                            setEmail(exactUserDataSet.email);
+                            setIsEmailDisabled(true);
+                        }
+                        else {
+                            setEmail('');
+                            setIsEmailDisabled(false);
+                        }
+                        // setApiMessage({ type: 'success', text: result.data.message });
+                    } else {
+                        setIsEmailDisabled(false);
+                        setApiMessage({ type: 'error', text: result.message });
+                    }
+                }
+                catch (error) {
+                    setApiMessage({ type: 'error', text: result.message });
+                }
+                finally {
+                    setIsLoading(false);
+                }
+            }
+            else {
+                setEmail('');
+                setIsEmailDisabled(false);
+                setIsLoading(false);
+            }
+        };
+        fetchData();
+    }, [userId]);
 
-    setLoading(true);
-    // Simulate API call
-    try {
-      await new Promise((res) => setTimeout(res, 1000));
-      setMessage('If an account with that email exists, a password reset link has been sent.');
-      setEmail('');
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleSendOtp = async () => {
+        if (!email) {
+            setApiMessage({ type: 'error', text: 'Please enter your email.' });
+            return;
+        }
+        else if (!/\S+@\S+\.\S+/.test(email.trim())) {
+            setApiMessage({ type: 'error', text: 'Please enter a valid email address.' });
+            return;
+        }
 
-  return (
-    <div style={styles.container}>
-      <form onSubmit={handleSubmit} style={styles.form} noValidate>
-        <h2 style={styles.title}>Forgot Password</h2>
 
-        {message && <div style={styles.success}>{message}</div>}
-        {error && <div style={styles.error}>{error}</div>}
+        // 🔹 Call your backend API here
+        // await generateOtpApiCall(email);
+        setIsLoading(true);
 
-        <label style={styles.label} htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          style={styles.input}
-        />
+        try {
+            const result = await generateOtpAndSendMail(userId, email);
+            if (result.success || (result.data != undefined && result.data.iSuccess)) {
+                setIsButtonDisabled(true);
+                setButtonText("Resend OTP");
+                setApiMessage({ type: 'success', text: result.data.message });
+            } else {
+                setIsButtonDisabled(true);
+                setButtonText("Resend OTP");
+                setApiMessage({ type: 'error', text: result.message });
+            }
+        }
+        catch (error) {
+            setApiMessage({ type: 'error', text: result.message });
+        }
+        finally {
+            setIsLoading(false);
+        }
+        // Start countdown after API call completes
+        setTimer(40);
+        // setApiMessage({ type: 'success', text: `OTP sent to ${email}` });
+    };
 
-        <button type="submit" style={styles.button} disabled={loading}>
-          {loading ? 'Sending...' : 'Send Reset Link'}
-        </button>
-      </form>
-    </div>
-  );
-};
+    const handleVerifyOtp = () => {
+        if (!otp) {
+            setApiMessage({ type: 'error', text: 'Please enter the OTP.' });
+            return;
+        }
+        setApiMessage({ type: 'success', text: 'OTP verified successfully.' });
+    };
+    const handleChange = (element, index) => {
+        if (isNaN(element.value)) return;
 
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    background: '#f5f7fb',
-    padding: 20,
-  },
-  form: {
-    width: '100%',
-    maxWidth: 420,
-    background: '#fff',
-    padding: 24,
-    borderRadius: 8,
-    boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
-    boxSizing: 'border-box',
-  },
-  title: {
-    margin: '0 0 16px 0',
-    fontSize: 20,
-    textAlign: 'center',
-  },
-  label: {
-    display: 'block',
-    marginBottom: 8,
-    fontSize: 14,
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    fontSize: 14,
-    marginBottom: 16,
-    borderRadius: 4,
-    border: '1px solid #dcdfe6',
-    boxSizing: 'border-box',
-  },
-  button: {
-    width: '100%',
-    padding: '10px 12px',
-    fontSize: 15,
-    background: '#0078d4',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 4,
-    cursor: 'pointer',
-  },
-  error: {
-    background: '#ffecec',
-    color: '#cc0000',
-    padding: '8px 10px',
-    borderRadius: 4,
-    marginBottom: 12,
-    fontSize: 13,
-  },
-  success: {
-    background: '#e6ffed',
-    color: '#006600',
-    padding: '8px 10px',
-    borderRadius: 4,
-    marginBottom: 12,
-    fontSize: 13,
-  },
+        const newOtp = [...otp];
+        newOtp[index] = element.value;
+        setOtp(newOtp);
+
+        // Auto-focus next input
+        if (element.nextSibling && element.value !== "") {
+            element.nextSibling.focus();
+        }
+    };
+
+    const handleKeyDown = (e, index) => {
+        if (e.key === "Backspace") {
+            if (otp[index] === "") {
+                // Move focus to previous input
+                if (e.target.previousSibling) {
+                    e.target.previousSibling.focus();
+                }
+            } else {
+                // Clear current value
+                const newOtp = [...otp];
+                newOtp[index] = "";
+                setOtp(newOtp);
+            }
+        }
+    };
+
+    useEffect(() => {
+        // Only start a timer if a message is actually being displayed
+        if (apiMessage.text) {
+            const timer = setTimeout(() => {
+                setApiMessage({ type: '', text: '' });
+            }, 4000); // 4000 milliseconds = 4 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [apiMessage.text]);
+
+    useEffect(() => {
+        let interval = null;
+        if (timer > 0) {
+            interval = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+        } else if (timer === 0 && isButtonDisabled) {
+            // Enable button again after countdown
+            setIsButtonDisabled(false);
+        }
+        return () => clearInterval(interval);
+    }, [timer, isButtonDisabled]);
+
+    return (
+        <>{isLoading && <LoadingOverlay />}
+            <div className="forgot-password-container">
+                <div className="forgot-password-card">
+                    <p>Forgot Password ? retrieve from here</p>
+                    <form>
+                        {apiMessage.text && (
+                            <div
+                                className={`api-message api-message-${apiMessage.type}`}
+                                dangerouslySetInnerHTML={{ __html: apiMessage.text }}
+                            />
+                        )}
+                        <div className="form-group-forgot-password">
+                            <label htmlFor="email">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                value={email}
+                                disabled={isEmailDisabled}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="Enter your email"
+                            />
+                        </div>
+                        <button
+                            className="handle-otp-btn"
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={isButtonDisabled}
+                        >
+                            {buttonText}
+                        </button>
+                        {timer > 0 && (
+                            <h4 className="otp-timer">
+                                You can resend OTP in {timer} seconds
+                            </h4>
+                        )}
+                        <div className="form-group-forgot-password">
+                            <label htmlFor="otp">OTP</label>
+                            <div className="otp-input-container">
+                                {otp.map((data, index) => (
+                                    <input
+                                        key={index}
+                                        type="text"
+                                        name="otp"
+                                        maxLength="1"
+                                        value={data}
+                                        onChange={(e) => handleChange(e.target, index)}
+                                        onKeyDown={(e) => { handleKeyDown(e, index) }}
+                                        onFocus={(e) => e.target.select()}
+                                        className="otp-input"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <button className="handle-otp-btn" type="button" onClick={handleVerifyOtp}>
+                            Verify OTP
+                        </button>
+
+                    </form>
+                    <div className="login-link">
+                        <span>Back to </span>
+                        <a href="/login" className="login-text">Login</a>
+                    </div>
+                </div>
+
+            </div>
+        </>
+    );
 };
 
 export default ForgotPassword;

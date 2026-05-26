@@ -3,6 +3,7 @@ import Login from './components/login/Login';
 import UserDashboard from './components/dashboard/UserDashboard';
 import AdminDashboard from './components/dashboard/AdminDashborad';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
+import ForgotPassword from './components/forgotpassword/ForgotPassword';
 import Signup from './components/signup/Signup';
 import { useAuth } from "./AuthContext"; // custom hook for auth state
 
@@ -37,16 +38,7 @@ function App() {
   return (
 
     <Routes>
-      {/* Default Route: Like { path: '', component: LoginComponent } */}
       <Route path="/login" element={<Login />} />
-      {/* <Route
-        path="/dashboard"
-        element={
-          <PrivateRoute>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      /> */}
       <Route
         path="/admin-dashboard"
         element={
@@ -72,8 +64,7 @@ function App() {
         }
       />
       <Route path="/signup" element={<Signup />} />
-
-      {/* Wildcard/Redirect: Like { path: '**', redirectTo: '' } */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
