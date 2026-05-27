@@ -197,7 +197,17 @@ export const generateOtpAndSendMail = async (userId, email) => {
         }),
     }, 3);
 };
+export const verifyOtp = async (userId, otp, email) => {
 
+    return makeAuthenticatedRequest(`/auth/verifyOtp`, {
+        method: 'POST',
+        body: JSON.stringify({
+            userId: userId.trim(),
+            otp: otp.trim(),
+            email: email.trim()
+        }),
+    }, 3);
+};
 /**
  * Make authenticated API request
  * @param {string} endpoint - API endpoint

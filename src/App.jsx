@@ -4,6 +4,7 @@ import UserDashboard from './components/dashboard/UserDashboard';
 import AdminDashboard from './components/dashboard/AdminDashborad';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import ForgotPassword from './components/forgotpassword/ForgotPassword';
+import ResetPassword from './components/resetpassword/ResetPassword';
 import Signup from './components/signup/Signup';
 import { useAuth } from "./AuthContext"; // custom hook for auth state
 
@@ -27,6 +28,18 @@ function PrivateRoute({ children }) {
   const expectedPath = roleRoutes[user.data.userRole];
   if (expectedPath && location.pathname !== expectedPath) {
     return <Navigate to={expectedPath} replace />;
+  }
+
+  return children;
+}
+function ReloadGuard({ children }) {
+  const isReload = () => {
+    const entries = performance.getEntriesByType("navigation");
+    return entries.length > 0 && entries[0].type === "reload";
+  };
+
+  if (isReload()) {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -65,6 +78,17 @@ function App() {
       />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      {/* <Route path="/reset-password" element={<ResetPassword />} /> */}
+
+      <Route
+        path="/reset-password"
+        element={
+          <ReloadGuard>
+            <ResetPassword />
+          </ReloadGuard>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

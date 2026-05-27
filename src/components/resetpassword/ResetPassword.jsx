@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from "react-router-dom";
-import './ForgotPassword.css';
+import './ResetPassword.css';
 import { fetchEmailByUserById, generateOtpAndSendMail, verifyOtp } from '../../service/login/loginService';
 import LoadingOverlay from '../common/LoadingOverlay';
 
-const ForgotPassword = () => {
+const ResetPassword = () => {
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState(new Array(6).fill(""));
     const [apiMessage, setApiMessage] = useState({ type: '', text: '' });
@@ -104,7 +104,7 @@ const ForgotPassword = () => {
         // 🔹 Call your backend API here
         setIsLoading(true);
         try {
-            const result = await verifyOtp(userId, otp.join(''), email);
+            const result = await verifyOtp(userId, otp.join(''));
             setOtp(new Array(6).fill(""));
             if ((result.success && result.data.iSuccess) || (result.data != undefined && result.data.iSuccess)) {
                 // setIsButtonDisabled(true);
@@ -182,9 +182,9 @@ const ForgotPassword = () => {
 
     return (
         <>{isLoading && <LoadingOverlay />}
-            <div className="forgot-password-container">
-                <div className="forgot-password-card">
-                    <p>Forgot Password ? retrieve from here</p>
+            <div className="reset-password-container">
+                <div className="reset-password-card">
+                    <p>Reset Password ? retrieve from here</p>
                     <form>
                         {apiMessage.text && (
                             <div
@@ -192,7 +192,7 @@ const ForgotPassword = () => {
                                 dangerouslySetInnerHTML={{ __html: apiMessage.text }}
                             />
                         )}
-                        <div className="form-group-forgot-password">
+                        <div className="form-group-reset-password">
                             <label htmlFor="email">Email</label>
                             <input
                                 id="email"
@@ -216,7 +216,7 @@ const ForgotPassword = () => {
                                 You can resend OTP in {timer} seconds
                             </h4>
                         )}
-                        <div className="form-group-forgot-password">
+                        <div className="form-group-reset-password">
                             <label htmlFor="otp">OTP</label>
                             <div className="otp-input-container">
                                 {otp.map((data, index) => (
@@ -251,4 +251,4 @@ const ForgotPassword = () => {
     );
 };
 
-export default ForgotPassword;
+export default ResetPassword;
