@@ -197,17 +197,29 @@ export const generateOtpAndSendMail = async (userId, email) => {
         }),
     }, 3);
 };
-export const verifyOtp = async (userId, otp, email) => {
+export const verifyOtp = async (userId, otp, email, userPkId) => {
 
     return makeAuthenticatedRequest(`/auth/verifyOtp`, {
         method: 'POST',
         body: JSON.stringify({
             userId: userId.trim(),
             otp: otp.trim(),
-            email: email.trim()
+            email: email.trim(),
+            userPkId: userPkId
         }),
     }, 3);
 };
+export const verifyLink = async (token, userPkId) => {
+
+    return makeAuthenticatedRequest(`/auth/validLink`, {
+        method: 'POST',
+        body: JSON.stringify({
+            token: token.trim(),
+            userPkId: userPkId.trim(),
+            hashCode: ''
+        }),
+    }, 3);
+}
 /**
  * Make authenticated API request
  * @param {string} endpoint - API endpoint

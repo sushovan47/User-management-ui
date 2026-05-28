@@ -6,6 +6,7 @@ import LoadingOverlay from '../common/LoadingOverlay';
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
+    const [userPkId, setUserPkId] = useState(0);
     const [otp, setOtp] = useState(new Array(6).fill(""));
     const [apiMessage, setApiMessage] = useState({ type: '', text: '' });
     const [timer, setTimer] = useState(0);
@@ -32,6 +33,7 @@ const ForgotPassword = () => {
                         const exactUserDataSet = userList.find(user => String(user.userId) === String(userId));
                         if (exactUserDataSet.email != undefined && exactUserDataSet.email != null) {
                             setEmail(exactUserDataSet.email);
+                            setUserPkId(exactUserDataSet.id);
                             setIsEmailDisabled(true);
                         }
                         else {
@@ -98,17 +100,19 @@ const ForgotPassword = () => {
 
     const handleVerifyOtp = async () => {
         if (!otp.length || otp.some(digit => digit === "")) {
+            setIsVerifyButtonDisabled(true);
             setApiMessage({ type: 'error', text: 'Please enter the OTP' });
             return;
         }
         // 🔹 Call your backend API here
         setIsLoading(true);
         try {
-            const result = await verifyOtp(userId, otp.join(''), email);
+            const result = await verifyOtp(userId, otp.join(''), email, userPkId);
             setOtp(new Array(6).fill(""));
             if ((result.success && result.data.iSuccess) || (result.data != undefined && result.data.iSuccess)) {
                 // setIsButtonDisabled(true);
                 // setButtonText("Resend OTP");
+                setIsVerifyButtonDisabled(true);
                 setApiMessage({ type: 'success', text: result.data.message });
             } else {
                 setIsVerifyButtonDisabled(true);
