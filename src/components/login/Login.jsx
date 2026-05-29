@@ -192,12 +192,15 @@ export default function Login() {
                 <div className="auth-links">
                     <div className="forgot-password-link">
                         <a
-                            href="#"
                             className={`forgot-password-text ${userId.trim() ? 'enabled' : 'disabled'}`}
                             onClick={(e) => {
                                 if (!userId.trim()) {
                                     e.preventDefault();
                                 }
+                                else if (userId.trim()) {
+                                    navigate("/forgot-password", { state: { userId } });
+                                }
+
                             }}
                         >
                             Forgot Password?

@@ -3,6 +3,8 @@ import Login from './components/login/Login';
 import UserDashboard from './components/dashboard/UserDashboard';
 import AdminDashboard from './components/dashboard/AdminDashborad';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
+import ForgotPassword from './components/forgotpassword/ForgotPassword';
+import ResetPassword from './components/resetpassword/ResetPassword';
 import Signup from './components/signup/Signup';
 import { useAuth } from "./AuthContext"; // custom hook for auth state
 
@@ -30,6 +32,18 @@ function PrivateRoute({ children }) {
 
   return children;
 }
+function ReloadGuard({ children }) {
+  const isReload = () => {
+    const entries = performance.getEntriesByType("navigation");
+    return entries.length > 0 && entries[0].type === "reload";
+  };
+
+  if (isReload()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   const isAuthenticated = false; // Replace with your auth logic
@@ -37,16 +51,7 @@ function App() {
   return (
 
     <Routes>
-      {/* Default Route: Like { path: '', component: LoginComponent } */}
       <Route path="/login" element={<Login />} />
-      {/* <Route
-        path="/dashboard"
-        element={
-          <PrivateRoute>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      /> */}
       <Route
         path="/admin-dashboard"
         element={
@@ -72,8 +77,18 @@ function App() {
         }
       />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      {/* <Route path="/reset-password" element={<ResetPassword />} /> */}
 
-      {/* Wildcard/Redirect: Like { path: '**', redirectTo: '' } */}
+      <Route
+        path="/reset-password"
+        element={
+          <ReloadGuard>
+            <ResetPassword />
+          </ReloadGuard>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
