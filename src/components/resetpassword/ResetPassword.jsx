@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import './ResetPassword.css';
-import { verifyLink } from '../../service/login/loginService';
+import { verifyLink, resetPassword } from '../../service/login/loginService';
 import LoadingOverlay from '../common/LoadingOverlay';
 import { useSearchParams } from 'react-router-dom';
 
@@ -42,6 +42,8 @@ const ResetPassword = () => {
             try {
                 // CRITICAL FIX: You MUST await your API call here
                 const result = await verifyLink(tokenFromUrl, userPkId);
+                setToken(tokenFromUrl);
+                setUserPkId(userPkId);
 
                 // Double check if result and result.data exist before reading fields
                 if (result && result.success && result.data && result.data.iSuccess) {
@@ -80,6 +82,35 @@ const ResetPassword = () => {
     }, [searchParams]);
 
     const handleResetPassword = async () => {
+        setIsLoading(true);
+        try {
+            const result = await resetPassword(token, userPkId, password);
+            if (result && result.success && result.data && result.data.iSuccess) {
+                setIsPasswordFiled(true);
+                setIsConfirmPasswordFiled(true);
+                setlinkInvalidMessage({ type: 'resetpass', text: result.data.message || 'Password Reset successfully!' });
+            } else {
+                setIsPasswordFiled(true);
+                setIsConfirmPasswordFiled(true);
+
+                const errorMsg = (result && result.data && result.data.message)
+                    ? result.data.message
+                    : 'The password reset link is invalid or has expired. Please request a new one.';
+
+                setlinkInvalidMessage({ type: 'error', text: errorMsg });
+            }
+        }
+        catch (error) {
+            setIsPasswordFiled(true);
+            setIsConfirmPasswordFiled(true);
+            setlinkInvalidMessage({
+                type: 'error',
+                text: 'A network error occurred. Please try again later.'
+            });
+        }
+        finally {
+            setIsLoading(false);
+        }
     };
 
     const handleBlur = (field) => {
@@ -91,6 +122,16 @@ const ResetPassword = () => {
             setIsResetPasswordBtn(false);
         }
     }
+    useEffect(() => {
+        // Only start a timer if a message is actually being displayed
+        if (apiMessage.text && apiMessage.type === 'success') {
+            const timer = setTimeout(() => {
+                setApiMessage({ type: '', text: '' });
+            }, 4000); // 4000 milliseconds = 4 seconds
+            return () => clearTimeout(timer);
+        }
+    }, [apiMessage.text]);
+
     const validateForm = () => {
         const newErrors = {};
 
@@ -122,16 +163,26 @@ const ResetPassword = () => {
     return (
         <>
             {isLoading && <LoadingOverlay />}
-            {linkInvalidMessage.text && (
+            {linkInvalidMessage.text && linkInvalidMessage.type === 'resetpass' ? (
                 <div className="full-page-error-overlay">
-                    <div className="error-card">
-                        <div className="error-icon">⚠️</div>
-                        <p>This page can only be accessed using a secure link sent to your email. If you already received one, the link may have expired (<b>valid for 2 minutes</b>). Please try requesting a new link from the fogot password page.</p>
+                    <div className="success-card">
+                        <div className="success-icon">✅</div>
+                        <p>{linkInvalidMessage.text}</p>
                         <a href="/login" className="back-to-login-btn">Back to Login</a>
                     </div>
                 </div>
-            )}
-            <div className={`reset-password-container ${linkInvalidMessage.text && linkInvalidMessage.type === 'error' ? 'blur-background' : ''}`}>
+            ) :
+                (linkInvalidMessage.text && (
+                    <div className="full-page-error-overlay">
+                        <div className="error-card">
+                            <div className="error-icon">⚠️</div>
+                            <p>{linkInvalidMessage.text}</p>
+                            <a href="/login" className="back-to-login-btn">Back to Login</a>
+                        </div>
+                    </div>
+                ))}
+
+            <div className={`reset-password-container ${linkInvalidMessage.text && (linkInvalidMessage.type === 'error' || linkInvalidMessage.type === 'resetpass') ? 'blur-background' : ''}`}>
 
                 <div className="reset-password-card">
                     <p>Reset Password ? retrieve from here</p>

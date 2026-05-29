@@ -220,6 +220,18 @@ export const verifyLink = async (token, userPkId) => {
         }),
     }, 3);
 }
+
+export const resetPassword = async (token, userPkId, hashCode) => {
+
+    return makeAuthenticatedRequest(`/auth/resetPassword`, {
+        method: 'POST',
+        body: JSON.stringify({
+            token: token.trim(),
+            userPkId: userPkId.trim(),
+            hashCode: encodeURIComponent(hashCode.trim())
+        }),
+    }, 3);
+}
 /**
  * Make authenticated API request
  * @param {string} endpoint - API endpoint
