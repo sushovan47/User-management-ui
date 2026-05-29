@@ -5,7 +5,7 @@ export default function Footer() {
     return (
         <>
             <footer className="footer">
-                © 2026 MyApp. All rights reserved.
+                © 2026 User-Management. All rights reserved.
             </footer>
         </>);
 }

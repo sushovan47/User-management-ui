@@ -2,9 +2,7 @@
  * Login Service - Handles all login-related API calls
  */
 
-import { useRevalidator } from 'react-router-dom';
 import { API_BASE_URL } from '../../config/apiConfig';
-import { use } from 'react';
 
 const TOKEN_KEY = 'authToken';
 const USER_ID = 'userId';
@@ -147,6 +145,30 @@ export const fetchUserById = async (userId) => {
 
 };
 
+export const fetchEmailByUserById = async (userId) => {
+    try {
+        const { response, data } = await fetchWithRetry(`${API_BASE_URL}/auth/getUserEmailByUserId?userId=${userId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        }, 3);
+        return {
+            data: data,
+            success: data.iSuccess,
+            message: data.message
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message.toString().replace(';', '') || 'An error occurred during login',
+            error: error,
+        };
+    }
+
+};
+
 export const updateUser = async (id, userId, firstName, lastName, email, mobile, dob, gender, userRole) => {
 
     return makeAuthenticatedRequest(`/user/updateUser/${id}`, {
@@ -159,6 +181,61 @@ export const updateUser = async (id, userId, firstName, lastName, email, mobile,
             mobileNo: mobile.trim(),
             dob: dob.trim(),
             gender: gender.trim(),
+            isUser: userRole === true ? true : false,
+            isAdmin: userRole === false ? true : false
+        }),
+    }, 3);
+};
+
+export const generateOtpAndSendMail = async (userId, email) => {
+
+    return makeAuthenticatedRequest(`/auth/generateOtpNSendMail`, {
+        method: 'POST',
+        body: JSON.stringify({
+            userId: userId.trim(),
+            email: email.trim()
+        }),
+    }, 3);
+};
+export const verifyOtp = async (userId, otp, email, userPkId) => {
+
+    return makeAuthenticatedRequest(`/auth/verifyOtp`, {
+        method: 'POST',
+        body: JSON.stringify({
+            userId: userId.trim(),
+            otp: otp.trim(),
+            email: email.trim(),
+            userPkId: userPkId
+        }),
+    }, 3);
+};
+export const verifyLink = async (token, userPkId) => {
+
+    return makeAuthenticatedRequest(`/auth/validLink`, {
+        method: 'POST',
+        body: JSON.stringify({
+            token: token.trim(),
+            userPkId: userPkId.trim(),
+            hashCode: ''
+        }),
+    }, 3);
+}
+
+export const resetPassword = async (token, userPkId, hashCode) => {
+
+    return makeAuthenticatedRequest(`/auth/resetPassword`, {
+        method: 'POST',
+        body: JSON.stringify({
+            token: token.trim(),
+            userPkId: userPkId.trim(),
+            hashCode: encodeURIComponent(hashCode.trim())
+        }),
+    }, 3);
+}
+/**
+ * Make authenticated API request
+ * @param {string} endpoint - API endpoint
+ * @param {object} options - Fetch options
             isUser: userRole === true ? true : false,
             isAdmin: userRole === false ? true : false
         }),
