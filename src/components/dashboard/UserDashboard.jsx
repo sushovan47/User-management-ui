@@ -4,7 +4,9 @@ import {
     getStoredUser,
     logoutUser,
     updateUser,
-    fetchUserById
+    fetchUserById,
+    uploadImage,
+    fetchDownloadImage
 } from '../../service/login/loginService';
 import Header from '../header/Header';
 import Footer from '../footer/Footer';
@@ -12,10 +14,14 @@ import { FaEdit } from "react-icons/fa";
 import PhoneInput from "react-phone-number-input";
 import LoadingOverlay from '../common/LoadingOverlay';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import maleLogo from '../../assets/male-avatar-logo.png';
+import femaleLogo from '../../assets/female-avatar-logo.png';
+import defaultLogo from '../../assets/default-avatar-logo.png';
 
 export default function UserDashboard() {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isimageUploading, setIsImageUploading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [userId, setUserId] = useState('');
     const [apiMessage, setApiMessage] = useState({ type: '', text: '' });
@@ -34,6 +40,13 @@ export default function UserDashboard() {
     const [country, setCountry] = useState('');
     const [isViewMode, setIsViewMode] = useState(false);
     const [appName, setAppName] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [localImg, setLocalImg] = useState(null);
+    const [userCrednId, setUserCrednId] = useState(0);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [isUploadBtnDisabled, setUploadBtnDisabled] = useState(false);
+    const [fileError, setFileError] = useState('');
+
     const validateForm = () => {
         const returnMsg = [];
 
@@ -113,11 +126,11 @@ export default function UserDashboard() {
 
     const fetchUserData = async (userId) => {
         try {
-            const result = await fetchUserById(userId);
+            const result = await fetchUserById(userId, 'TKNR');
             if (result.success || (result.data != undefined && result.data.iSuccess)) {
                 const userList = result.data.data || [];
                 const exactUserDataSet = userList.find(user => String(user.userId) === String(userId));
-
+                setUserCrednId(exactUserDataSet.userCredentials[0]?.userCrednid || 0);
                 setUser(exactUserDataSet);
                 setUserId(exactUserDataSet.userId || '');
                 setFirstName(exactUserDataSet.firstName || '');
@@ -131,6 +144,7 @@ export default function UserDashboard() {
 
                 const exactUserRole = exactUserDataSet.userCredentials[0]?.role || 'N/A';
                 setUserRole(exactUserRole);
+                fetchUserImage(exactUserDataSet.userCredentials[0]?.userCrednid);
                 setApiMessage({ type: 'success', text: result.data.message });
             } else {
                 setApiMessage({ type: 'error', text: result.message });
@@ -139,6 +153,22 @@ export default function UserDashboard() {
             setApiMessage({ type: 'error', text: result.message });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchUserImage = async (userCrednid) => {
+        try {
+            const result = await fetchDownloadImage(userCrednid);
+
+            if (result != undefined && result.blobUrl != undefined && result.blobUrl != null) {
+                // use blobUrl returned from service
+                setLocalImg(result.blobUrl);
+            } else {
+                // fallback to default avatar
+                setLocalImg(getAvatarSrc(result.blobUrl));
+            }
+        } catch (error) {
+            setLocalImg(getAvatarSrc());
         }
     };
 
@@ -203,6 +233,63 @@ export default function UserDashboard() {
         logoutUser();
         window.location.href = '/';
     };
+    const getAvatarSrc = (blobUrl) => {
+        if (blobUrl === undefined || blobUrl === null) {
+            const userGender = gender?.toLowerCase();
+            if (userGender === 'male') return maleLogo;
+            if (userGender === 'female') return femaleLogo;
+        }
+        else {
+            return defaultLogo;
+        }
+    };
+    const handleCloseModal = () => {
+        setIsOpen(false);
+        setIsEditing(false)
+        setUploadBtnDisabled(false);
+        setIsImageUploading(false);
+        setFileError('');
+    }
+    const onFileChange = async (e) => {
+        setFileError('');
+
+        const file = e.target.files && e.target.files[0];
+        // Extract the base name (everything before the very last dot)
+        const lastDotIndex = file.name.lastIndexOf('.');
+        const baseName = lastDotIndex !== -1 ? file.name.substring(0, lastDotIndex) : file.name;
+
+        // Check if the remaining base name contains any dot character
+        if (baseName.includes('.')) {
+            setFileError('Please correct the filename (remove extra dots) and reupload.');
+
+            // Clear the HTML input element value so the user can select the file again
+            e.target.value = '';
+            return; // Stop execution: do not update selectedFile or trigger upload
+        }
+        setSelectedFile(file);
+        const formData = new FormData();
+        formData.append('file', file);
+        setIsImageUploading(true);
+
+        try {
+            const result = await uploadImage(formData, userCrednId);
+            if (result.data != undefined && result.data.isSuccess) {
+
+                const temporaryBlobUrl = URL.createObjectURL(file);
+                setLocalImg(temporaryBlobUrl);
+
+                setIsImageUploading(false);
+                setUploadBtnDisabled(true);
+
+                setApiMessage({ type: 'success', text: result.data.message });
+            } else {
+                setApiMessage({ type: 'error', text: result.message });
+            }
+        } catch (error) {
+            setApiMessage({ type: 'error', text: result.message });
+        }
+
+    };
 
     return (
         <>
@@ -214,12 +301,103 @@ export default function UserDashboard() {
                     <div className="dashboard-shell">
                         <aside className="dashboard-sidebar">
                             <div className="sidebar-brand">
-                                <div className="sidebar-logo">A</div>
+                                <div className="sidebar-avatar-container">
+                                    {/* 3. Render the local asset image */}
+                                    <button className="sb-avatar-btn" onClick={() => setIsOpen(true)} type="button">
+                                        <img
+                                            src={isUploadBtnDisabled ? getAvatarSrc() : localImg || getAvatarSrc()}
+                                            alt="User Profile Logo"
+                                            className="avatar-img"
+                                        />
+                                    </button>
+
+                                    {/* 4. Overlay the user initial text over the blank face space */}
+                                    {/* {!localImg && (
+                                        <span className="sb-avatar-txt">
+                                            {userFirstName ? userFirstName.charAt(0).toUpperCase() : 'A'}
+                                        </span>
+                                    )} */}
+                                </div>
                                 <div>
-                                    <h2>{appName}</h2>
-                                    <p>User Panel</p>
+                                    <h4>{appName}</h4>
                                 </div>
                             </div>
+
+                            {isOpen && (
+                                <div className="sb-modal-overlay" onClick={handleCloseModal}>
+                                    <div
+                                        className="sb-modal-card"
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{ position: 'relative', overflow: 'hidden' }}
+                                    >
+
+                                        {/* 1. BLUR OVERLAY LAYER (Shows during upload process OR success screen) */}
+                                        {isimageUploading ? (
+                                            /* ---- STATE A: ACTIVE BACKEND UPLOAD ---- */
+                                            <div className="sb-modal-blur-loader">
+                                                <div className="sb-loader-content">
+                                                    <h4 className="upload-msg">Uploading your photo...</h4>
+                                                    <p className="upload-submsg">Please do not close this window</p>
+                                                </div>
+                                            </div>
+                                        ) : isUploadBtnDisabled && selectedFile ? (
+                                            /* ---- STATE B: SUCCESS SCREEN (Upload Done, Button Disabled) ---- */
+                                            <div className="sb-modal-blur-loader">
+                                                <div className="sb-loader-content" style={{ position: 'relative' }}>
+                                                    <h4 className="upload-msg"><i className="file-name-txt"> {selectedFile?.name}</i> Uploaded successfully</h4>
+                                                    <p className="upload-submsg">You can close this window now</p>
+
+                                                    {/* Bottom "Done" Action Button */}
+                                                    <button
+                                                        className="sb-success-btn"
+                                                        onClick={handleCloseModal}
+                                                    >
+                                                        Ok
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : null}
+
+                                        {/* 2. REGULAR MODAL CONTENT */}
+                                        <button className="sb-close" onClick={handleCloseModal}>&times;</button>
+
+                                        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '700' }}>Account Profile</h3>
+
+                                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <div className="sb-preview-box">
+                                                <img src={isUploadBtnDisabled ? getAvatarSrc() : localImg || getAvatarSrc()} alt="Preview" className="sb-avatar-img" />
+                                            </div>
+
+                                            <label className="sb-upload-lbl">
+                                                Upload Photo
+                                                <input type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
+                                            </label>
+                                        </div>
+                                        {fileError && (
+                                            <p className="error-file-upload">
+                                                {fileError}
+                                            </p>
+                                        )}
+
+                                        <div className="sb-fields">
+                                            <div className="sb-row">
+                                                <label>Name</label>
+                                                <p>{userFirstName} {userLastName}</p>
+                                            </div>
+                                            <div className="sb-row">
+                                                <label>Email</label>
+                                                <p>{userEmail}</p>
+                                            </div>
+                                            <div className="sb-row">
+                                                <label>Gender</label>
+                                                <p style={{ textTransform: 'capitalize' }}>{gender}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+
 
                             <nav className="sidebar-nav">
                                 <a href="#" className="active">🏠 Home</a>
@@ -359,7 +537,7 @@ export default function UserDashboard() {
                                                     onClick={handleToggleRole}
                                                     className={`modern-toggle-track ${userRole ? "on" : "off"}`}
                                                     aria-pressed={userRole}
-                                                    disabled={isLoading}
+                                                    disabled={!isEditing}
                                                 >
                                                     <span className="modern-toggle-thumb" />
                                                 </button>
@@ -369,13 +547,14 @@ export default function UserDashboard() {
 
                                         <div className="profile-row">
                                             <span className="label">Gender</span>
-                                            <div className="gender-group">
+                                            <div className="gender-group" >
                                                 <label>
                                                     <input
                                                         type="radio"
                                                         name="gender"
                                                         value="male"
                                                         checked={gender === 'male'}
+                                                        disabled={!isEditing}
                                                         onChange={(e) => handleChange('gender', e.target.value)}
                                                     />
                                                     Male
@@ -386,6 +565,7 @@ export default function UserDashboard() {
                                                         name="gender"
                                                         value="female"
                                                         checked={gender === 'female'}
+                                                        disabled={!isEditing}
                                                         onChange={(e) => handleChange('gender', e.target.value)}
                                                     />
                                                     Female
@@ -396,6 +576,7 @@ export default function UserDashboard() {
                                                         name="gender"
                                                         value="other"
                                                         checked={gender === 'other' || gender === null || gender === ''}
+                                                        disabled={!isEditing}
                                                         onChange={(e) => handleChange('gender', e.target.value)}
                                                     />
                                                     Other

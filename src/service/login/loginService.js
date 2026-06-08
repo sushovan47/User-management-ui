@@ -24,6 +24,15 @@ export const isUserAuthenticated = () => {
     return !!localStorage.getItem(TOKEN_KEY);
 };
 
+export const isTokenExpired = () => {
+    const expiry = localStorage.getItem(TOKEN_EXP); // stored at login
+    if (!expiry) {
+        return true;
+    }
+    const now = Date.now();
+    return now > Number(expiry); // true if expired
+}
+
 /**
  * Authenticate user with userId and password
  * @param {string} userId - User ID
@@ -85,10 +94,13 @@ export const loginUser = async (userId, password) => {
 
         // Store token in localStorage
         if (data.token) {
+            // const expiredtimeJwt = data.expirationTime; // Exactly 30 seconds for testing
+            // const currentTime = Date.now();
+            // const expirationTimestamp = Math.floor((currentTime + expiredtimeJwt) / 1000);
+            localStorage.setItem(TOKEN_EXP, data.expirationTime.toString());
             localStorage.setItem(TOKEN_KEY, data.token);
             localStorage.setItem(USER_ID, data.userId);
             localStorage.setItem(USER_ROLE, data.userRole);
-            localStorage.setItem(TOKEN_EXP, data.expirationTime);
         }
 
         return {
@@ -138,10 +150,11 @@ export const saveUser = async (userId, firstName, lastName, email, mobile, dob, 
     }
 };
 
-export const fetchUserById = async (userId) => {
-    return makeAuthenticatedRequest(`/user/fetchUserById?searchParamKey=${userId}`, {
-        method: 'GET',
-    });
+export const fetchUserById = async (userId, callFromInd) => {
+    return makeAuthenticatedRequest(`/auth/fetchUserById?searchParamKey=${userId}`, {
+        method: 'GET'
+
+    }, callFromInd);
 
 };
 
@@ -197,6 +210,7 @@ export const generateOtpAndSendMail = async (userId, email) => {
         }),
     }, 3);
 };
+
 export const verifyOtp = async (userId, otp, email, userPkId) => {
 
     return makeAuthenticatedRequest(`/auth/verifyOtp`, {
@@ -209,6 +223,7 @@ export const verifyOtp = async (userId, otp, email, userPkId) => {
         }),
     }, 3);
 };
+
 export const verifyLink = async (token, userPkId) => {
 
     return makeAuthenticatedRequest(`/auth/validLink`, {
@@ -219,7 +234,7 @@ export const verifyLink = async (token, userPkId) => {
             hashCode: ''
         }),
     }, 3);
-}
+};
 
 export const resetPassword = async (token, userPkId, hashCode) => {
 
@@ -231,7 +246,55 @@ export const resetPassword = async (token, userPkId, hashCode) => {
             hashCode: encodeURIComponent(hashCode.trim())
         }),
     }, 3);
-}
+};
+
+export const uploadImage = async (formData, userCrednId) => {
+    try {
+        const { response, data } = await fetchWithRetry(`${API_BASE_URL}/auth/uploadImage?userCrednId=${userCrednId}`, {
+            method: 'POST',
+            body: formData
+            // headers: {
+            //     Authorization: `Bearer ${getAuthToken()}`,
+            // }
+        }, 3);
+
+        return {
+            data: data
+        };
+    } catch (error) {
+        return {
+            success: false,
+            message: error.message || 'An error occurred during upload image',
+            error: error,
+        };
+    }
+};
+
+export const fetchDownloadImage = async (userCrednid) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/downloadImage/${userCrednid}`, {
+            method: 'GET'
+            // headers: {
+            //     Authorization: `Bearer ${getAuthToken()}`,
+            // }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch image');
+        }
+
+        const blob = await response.blob();
+        var blobUrl = null
+        if (blob.size > 0) {
+            blobUrl = URL.createObjectURL(blob);
+        }
+
+
+        return { blobUrl };   // ✅ return blobUrl
+    } catch (error) {
+        return { error: error.message || 'Failed to fetch image' };
+    }
+};
 /**
  * Make authenticated API request
  * @param {string} endpoint - API endpoint
@@ -248,7 +311,7 @@ export const resetPassword = async (token, userPkId, hashCode) => {
  * @param {object} options - Fetch options
  * @returns {Promise} - API response
  */
-export const makeAuthenticatedRequest = async (endpoint, options = {}) => {
+export const makeAuthenticatedRequest = async (endpoint, options = {}, callFromInd) => {
     try {
         const token = getAuthToken();
         const defaultHeaders = {
@@ -256,12 +319,9 @@ export const makeAuthenticatedRequest = async (endpoint, options = {}) => {
             'accept': 'application/json',
         };
 
-        if (token) {
+        if (token && callFromInd != undefined && callFromInd != 'TKNR') {
             defaultHeaders['Authorization'] = `Bearer ${token}`;
         }
-
-        console.log('Default Header >>>>>>>>>>>>>>>>>> ', defaultHeaders);
-        console.log('Options Header >>>>>>>>>>>>>>>>>> ', options.headers);
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers: {
@@ -302,6 +362,7 @@ export const logoutUser = () => {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_ID);
         localStorage.removeItem(USER_ROLE);
+        localStorage.removeItem(TOKEN_EXP);
         return {
             success: true,
             message: 'Logout successful',
