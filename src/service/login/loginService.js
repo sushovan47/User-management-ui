@@ -295,6 +295,19 @@ export const fetchDownloadImage = async (userCrednid) => {
         return { error: error.message || 'Failed to fetch image' };
     }
 };
+
+export const updatePwd = async (userPkId, userId, oldPassword, newPassword) => {
+
+    return makeAuthenticatedRequest(`/user/updatePwd`, {
+        method: 'PUT',
+        body: JSON.stringify({
+            userPkId: userPkId,
+            userId: userId.trim(),
+            oldPassword: oldPassword.trim(),
+            newPassword: newPassword.trim()
+        }),
+    }, 3);
+};
 /**
  * Make authenticated API request
  * @param {string} endpoint - API endpoint
@@ -319,7 +332,7 @@ export const makeAuthenticatedRequest = async (endpoint, options = {}, callFromI
             'accept': 'application/json',
         };
 
-        if (token && callFromInd != undefined && callFromInd != 'TKNR') {
+        if (token && callFromInd != 'TKNR') {
             defaultHeaders['Authorization'] = `Bearer ${token}`;
         }
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {

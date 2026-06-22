@@ -6,7 +6,8 @@ import {
     updateUser,
     fetchUserById,
     uploadImage,
-    fetchDownloadImage
+    fetchDownloadImage,
+    updatePwd
 } from '../../service/login/loginService';
 import Header from '../header/Header';
 import Footer from '../footer/Footer';
@@ -20,17 +21,22 @@ import defaultLogo from '../../assets/default-avatar-logo.png';
 
 export default function UserDashboard() {
     const [user, setUser] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [oldPassword, setOldPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isimageUploading, setIsImageUploading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [userId, setUserId] = useState('');
     const [apiMessage, setApiMessage] = useState({ type: '', text: '' });
+    const [apiMessageForPwd, setApiMessageForPwd] = useState({ type: '', text: '' });
     const [userFirstName, setFirstName] = useState('');
     const [userLastName, setLastName] = useState('');
     const [userEmail, setEmail] = useState('');
     const [mobile, setMobile] = useState('');
     const [errors, setErrors] = useState({});
+    const [passwordErrors, setPasswordErrors] = useState({});
     const [touched, setTouched] = useState({});
+    const [passwordTouched, setPasswordTouched] = useState({});
     const [gender, setGender] = useState('');
     const [dob, setDob] = useState('');
     const [userRole, setUserRole] = useState('');
@@ -46,7 +52,88 @@ export default function UserDashboard() {
     const [selectedFile, setSelectedFile] = useState(null);
     const [isUploadBtnDisabled, setUploadBtnDisabled] = useState(false);
     const [fileError, setFileError] = useState('');
+    const [isUploadBtnPawword, setUploadBtnPawword] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
 
+
+    //on load page settings
+    useEffect(() => {
+        const userData = getStoredUser();
+        setIsLoading(true);
+        fetchUserData(userData?.userId);
+    }, []);
+
+    useEffect(() => {
+        if (apiMessage.text) {
+            const timer = setTimeout(() => {
+                setApiMessage({ type: '', text: '' });
+            }, 4000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [apiMessage.text]);
+
+    useEffect(() => {
+        if (apiMessageForPwd.text) {
+            const timer = setTimeout(() => {
+                setApiMessageForPwd({ type: '', text: '' });
+            }, 4000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [apiMessageForPwd.text]);
+
+    //On Load user data load
+    const fetchUserData = async (userId) => {
+        try {
+            const result = await fetchUserById(userId, 'TKNR');
+            if (result.success || (result.data != undefined && result.data.iSuccess)) {
+                const userList = result.data.data || [];
+                const exactUserDataSet = userList.find(user => String(user.userId) === String(userId));
+                setUserCrednId(exactUserDataSet.userCredentials[0]?.userCrednid || 0);
+                setUser(exactUserDataSet);
+                setUserId(exactUserDataSet.userId || '');
+                setFirstName(exactUserDataSet.firstName || '');
+                setLastName(exactUserDataSet.lastName || '');
+                setEmail(exactUserDataSet.email || '');
+                setMobile(exactUserDataSet.mobileNo || '');
+                setDob(exactUserDataSet.dob || '');
+                setGender(exactUserDataSet.gender || '');
+                setuserLoginId(exactUserDataSet.id || 0);
+                setAppName(result.data.appName);
+
+                const exactUserRole = exactUserDataSet.userCredentials[0]?.role || 'N/A';
+                setUserRole(exactUserRole);
+                fetchUserImage(exactUserDataSet.userCredentials[0]?.userCrednid);
+                setApiMessage({ type: 'success', text: result.data.message });
+            } else {
+                setApiMessage({ type: 'error', text: result.message });
+            }
+        } catch (error) {
+            setApiMessage({ type: 'error', text: result.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    //On load user profile picture fetch
+    const fetchUserImage = async (userCrednid) => {
+        try {
+            const result = await fetchDownloadImage(userCrednid);
+
+            if (result != undefined && result.blobUrl != undefined && result.blobUrl != null) {
+                // use blobUrl returned from service
+                setLocalImg(result.blobUrl);
+            } else {
+                // fallback to default avatar
+                setLocalImg(getAvatarSrc(result.blobUrl));
+            }
+        } catch (error) {
+            setLocalImg(getAvatarSrc());
+        }
+    };
+
+    //When try to save user form validation
     const validateForm = () => {
         const returnMsg = [];
 
@@ -99,6 +186,7 @@ export default function UserDashboard() {
         return returnMsg.join('<BR/> ');
     };
 
+    //When try to save user form validation on change
     const handleChange = (field, value) => {
         if (field === 'userId') {
             setUserId(value);
@@ -124,115 +212,12 @@ export default function UserDashboard() {
         }
     };
 
-    const fetchUserData = async (userId) => {
-        try {
-            const result = await fetchUserById(userId, 'TKNR');
-            if (result.success || (result.data != undefined && result.data.iSuccess)) {
-                const userList = result.data.data || [];
-                const exactUserDataSet = userList.find(user => String(user.userId) === String(userId));
-                setUserCrednId(exactUserDataSet.userCredentials[0]?.userCrednid || 0);
-                setUser(exactUserDataSet);
-                setUserId(exactUserDataSet.userId || '');
-                setFirstName(exactUserDataSet.firstName || '');
-                setLastName(exactUserDataSet.lastName || '');
-                setEmail(exactUserDataSet.email || '');
-                setMobile(exactUserDataSet.mobileNo || '');
-                setDob(exactUserDataSet.dob || '');
-                setGender(exactUserDataSet.gender || '');
-                setuserLoginId(exactUserDataSet.id || 0);
-                setAppName(result.data.appName);
-
-                const exactUserRole = exactUserDataSet.userCredentials[0]?.role || 'N/A';
-                setUserRole(exactUserRole);
-                fetchUserImage(exactUserDataSet.userCredentials[0]?.userCrednid);
-                setApiMessage({ type: 'success', text: result.data.message });
-            } else {
-                setApiMessage({ type: 'error', text: result.message });
-            }
-        } catch (error) {
-            setApiMessage({ type: 'error', text: result.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const fetchUserImage = async (userCrednid) => {
-        try {
-            const result = await fetchDownloadImage(userCrednid);
-
-            if (result != undefined && result.blobUrl != undefined && result.blobUrl != null) {
-                // use blobUrl returned from service
-                setLocalImg(result.blobUrl);
-            } else {
-                // fallback to default avatar
-                setLocalImg(getAvatarSrc(result.blobUrl));
-            }
-        } catch (error) {
-            setLocalImg(getAvatarSrc());
-        }
-    };
-
-    const onSaveUser = async () => {
-        const newErrors = validateForm();
-
-        if (Object.keys(newErrors).length === 0) {
-            var newDob = dob.split('-');
-            newDob = `${newDob[1]}/${newDob[2]}/${newDob[0]}`;
-
-            updateUser(userLoginId, userId, userFirstName, userLastName, userEmail, mobile, newDob, gender, userRole)
-                .then(result => {
-                    if (result.success || (result.data != undefined && result.data.iSuccess)) {
-                        setApiMessage({ type: 'success', text: result.data.message });
-                        setIsEditing(false);
-                    } else {
-                        setApiMessage({ type: 'error', text: result.message });
-                    }
-                })
-                .catch(error => {
-                    setApiMessage({
-                        type: 'error',
-                        text: error.message || 'An error occurred while updating user information'
-                    });
-                });
-        } else {
-            setApiMessage({ type: 'error', text: newErrors });
-            setTouched({
-                userId: true,
-                userFirstName: true,
-                userLastName: true,
-                userEmail: true,
-                mobile: true,
-                dob: true,
-                gender: true,
-                userRole: true
-            });
-        }
-    };
-
+    //Role change toggle
     const handleToggleRole = () => {
         setUserRole(prev => !prev);
     };
 
-    useEffect(() => {
-        const userData = getStoredUser();
-        setIsLoading(true);
-        fetchUserData(userData?.userId);
-    }, []);
-
-    useEffect(() => {
-        if (apiMessage.text) {
-            const timer = setTimeout(() => {
-                setApiMessage({ type: '', text: '' });
-            }, 4000);
-
-            return () => clearTimeout(timer);
-        }
-    }, [apiMessage.text]);
-
-    const handleLogout = () => {
-        logoutUser();
-        window.location.href = '/';
-    };
+    //fetch default image
     const getAvatarSrc = (blobUrl) => {
         if (blobUrl === undefined || blobUrl === null) {
             const userGender = gender?.toLowerCase();
@@ -243,6 +228,8 @@ export default function UserDashboard() {
             return defaultLogo;
         }
     };
+
+    //image profile details modal
     const handleCloseModal = () => {
         setIsOpen(false);
         setIsEditing(false)
@@ -250,6 +237,8 @@ export default function UserDashboard() {
         setIsImageUploading(false);
         setFileError('');
     }
+
+    //image upload
     const onFileChange = async (e) => {
         setFileError('');
 
@@ -291,6 +280,184 @@ export default function UserDashboard() {
 
     };
 
+    //Save user data
+    const onSaveUser = async () => {
+        const newErrors = validateForm();
+
+        if (Object.keys(newErrors).length === 0) {
+            var newDob = dob.split('-');
+            newDob = `${newDob[1]}/${newDob[2]}/${newDob[0]}`;
+
+            updateUser(userLoginId, userId, userFirstName, userLastName, userEmail, mobile, newDob, gender, userRole)
+                .then(result => {
+                    if (result.success || (result.data != undefined && result.data.iSuccess)) {
+                        setApiMessage({ type: 'success', text: result.data.message });
+                        setIsEditing(false);
+                    } else {
+                        setApiMessage({ type: 'error', text: result.message });
+                    }
+                })
+                .catch(error => {
+                    setApiMessage({
+                        type: 'error',
+                        text: error.message || 'An error occurred while updating user information'
+                    });
+                });
+        } else {
+            setApiMessage({ type: 'error', text: newErrors });
+            setTouched({
+                userId: true,
+                userFirstName: true,
+                userLastName: true,
+                userEmail: true,
+                mobile: true,
+                dob: true,
+                gender: true,
+                userRole: true
+            });
+        }
+    };
+
+    //validation for password change
+    const validatePasswordChangeForm = () => {
+        const returnMsg = {};
+
+        if (!oldPassword.trim()) {
+            returnMsg.oldPassword = 'Old password is required';
+        }
+        if (!newPassword.trim()) {
+            returnMsg.newPassword = 'New password is required';
+        } else if (newPassword.trim().length < 6) {
+            returnMsg.newPassword = 'Password must be at least 6 characters';
+        }
+        if (oldPassword.trim() && newPassword.trim() && newPassword.trim() === oldPassword.trim()) {
+            returnMsg.newPassword = 'Old and new passwords is same. Please choose a different new password';
+        }
+
+        return returnMsg;
+    };
+
+    //validation for password change on change
+    const handlePasswordChange = (field, value) => {
+        if (field === 'oldPassword') {
+            setOldPassword(value);
+        } else if (field === 'newPassword') {
+            setNewPassword(value);
+        }
+        if (passwordTouched[field]) {
+            const newErrors = validatePasswordChangeForm();
+            setPasswordErrors(newErrors);
+        }
+    };
+
+    //Update user password
+    const updatePassword = async (e) => {
+        const newErrors = validatePasswordChangeForm();
+
+        if (Object.keys(newErrors).length === 0) {
+
+            try {
+                const result = await updatePwd(userLoginId, userId, oldPassword, newPassword);
+                if (result.data != undefined && result.data.iSuccess) {
+
+                    setOldPassword('');
+                    setNewPassword('');
+                    setUploadBtnPawword(true);
+
+                    setApiMessageForPwd({ type: 'success', text: result.data.message });
+                } else {
+                    setOldPassword('');
+                    setNewPassword('');
+                    setUploadBtnPawword(true);
+                    setApiMessageForPwd({ type: 'error', text: result.message });
+                }
+            } catch (error) {
+                setOldPassword('');
+                setNewPassword('');
+                setApiMessageForPwd({ type: 'error', text: result.message });
+            }
+        } else {
+            setPasswordErrors(newErrors);
+            setTouched({ oldPassword: true, newPassword: true });
+        }
+
+    };
+
+    // Calculate strength rules dynamically
+    const getPasswordStrength = (pwd) => {
+        if (!pwd) return { text: 'Empty', className: 'empty' };
+
+        let score = 0;
+        if (pwd.length >= 8) score++;
+        if (/[A-Z]/.test(pwd)) score++;
+        if (/[0-9]/.test(pwd)) score++;
+        if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+        if (pwd.length < 6) {
+            return { text: 'Too Weak', className: 'weak' };
+        }
+
+        switch (score) {
+            case 0:
+            case 1:
+                return { text: 'Weak', className: 'weak' };
+            case 2:
+                return { text: 'Medium', className: 'medium' };
+            case 3:
+                return { text: 'Strong', className: 'strong' };
+            case 4:
+            default:
+                return { text: 'Very Strong', className: 'very-strong' };
+        }
+    };
+
+    //password fileds validation on blur
+    const handleBlur = (field) => {
+        setPasswordTouched({ ...passwordTouched, [field]: true });
+        const newErrors = validatePasswordChangeForm();
+
+        setPasswordErrors(newErrors);
+        if (Object.keys(newErrors).length === 0) {
+
+            setUploadBtnPawword(false);
+        }
+    };
+
+    //Log out function
+    const handleLogout = () => {
+        logoutUser();
+        window.location.href = '/';
+    };
+
+    const { text, className } = getPasswordStrength(newPassword);
+
+    // User Hisory page details- 
+    const activities = [
+        { id: 1, date: "June 01 - 14:04", text: "Logged in successfully (Chrome / Windows)" },
+        { id: 2, date: "May 28 - 09:12", text: "Password changed successfully" },
+        { id: 3, date: "May 25 - 18:30", text: "Profile picture updated" },
+        { id: 4, date: "May 20 - 11:15", text: "Two-factor authentication enabled" },
+        { id: 5, date: "May 19 - 16:45", text: "Logged out from Safari (MacBook Pro)" },
+        { id: 6, date: "May 15 - 08:22", text: "Failed login attempt detected" },
+        { id: 7, date: "May 10 - 13:00", text: "API token generated" },
+        { id: 8, date: "May 05 - 10:05", text: "Billing address updated" }
+    ];
+    const itemsPerPage = 2;
+
+    // 3. Pagination Logic Calculations
+    const totalPages = Math.ceil(activities.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentItems = activities.slice(startIndex, startIndex + itemsPerPage);
+
+    // 4. Navigation Handlers
+    const handlePrev = () => {
+        if (currentPage > 1) setCurrentPage(currentPage - 1);
+    };
+
+    const handleNext = () => {
+        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+    };
+
     return (
         <>
             {isLoading && <LoadingOverlay />}
@@ -310,13 +477,6 @@ export default function UserDashboard() {
                                             className="avatar-img"
                                         />
                                     </button>
-
-                                    {/* 4. Overlay the user initial text over the blank face space */}
-                                    {/* {!localImg && (
-                                        <span className="sb-avatar-txt">
-                                            {userFirstName ? userFirstName.charAt(0).toUpperCase() : 'A'}
-                                        </span>
-                                    )} */}
                                 </div>
                                 <div>
                                     <h4>{appName}</h4>
@@ -640,40 +800,106 @@ export default function UserDashboard() {
 
                                     <div className="security-item">
                                         <label>Current Password</label>
-                                        <input type="password" className="modern-input" placeholder="••••••••" />
+                                        <input
+                                            type="password"
+                                            className="modern-input"
+                                            placeholder="please enter old password"
+                                            value={oldPassword}
+                                            onChange={(e) => handlePasswordChange('oldPassword', e.target.value)}
+                                            onBlur={handleBlur}
+                                        />
+                                        {passwordErrors.oldPassword && (
+                                            <span className="error-message">{passwordErrors.oldPassword}</span>
+                                        )}
                                     </div>
 
                                     <div className="security-item">
                                         <label>New Password</label>
-                                        <input type="password" className="modern-input" placeholder="••••••••" />
+                                        <input
+                                            type="password"
+                                            className="modern-input"
+                                            placeholder="please enter current password"
+                                            value={newPassword}
+                                            onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                                            onBlur={handleBlur}
+                                        />
+                                        {passwordErrors.newPassword && (
+                                            <span className="error-message">{passwordErrors.newPassword}</span>
+                                        )}
                                     </div>
 
+                                    {/* Modern wrapper holding the dynamic sub-bar */}
                                     <div className="password-strength">
-                                        <div className="strength-bar" />
+                                        <div className={`strength-bar-fill ${className}`} />
                                     </div>
-                                    <div className="strength-text">Password Strength: Weak</div>
 
-                                    <button className="submit-btn secondary-btn">Update Password</button>
+                                    <div className={`strength-text ${className}`}>
+                                        Password Strength: <strong>{text}</strong>
+                                    </div>
+
+                                    {apiMessageForPwd.text && (
+                                        <div className={`dashboard-toast toast-${apiMessageForPwd.type}`}>
+                                            <div className="toast-icon">
+                                                {apiMessageForPwd.type === 'success' ? '✓' : '⚠'}
+                                            </div>
+                                            <div className="toast-content">
+                                                <p
+                                                    className="toast-text"
+                                                    dangerouslySetInnerHTML={{ __html: apiMessageForPwd.text }}
+                                                />
+                                            </div>
+                                            <button
+                                                className="toast-close-btn"
+                                                onClick={() => setApiMessageForPwd({ type: '', text: '' })}
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    )}
+                                    <br />
+
+                                    <button
+                                        className="submit-btn secondary-btn"
+                                        disabled={isUploadBtnPawword}
+                                        onClick={updatePassword} >
+                                        Update Password
+                                    </button>
                                 </div>
                             </section>
 
                             <section className="modern-card activity-card">
-                                <h3>🕒 Recent Activity Logs</h3>
+                                <h3 className="activity-title">🕒 Recent Activity Logs</h3>
 
-                                <div className="activity-item">
-                                    <div className="activity-dot" />
-                                    <div>
-                                        <div className="activity-meta">June 01 - 14:04</div>
-                                        <div className="activity-text">Logged in successfully (Chrome / Windows)</div>
-                                    </div>
+                                <div className="activity-timeline">
+                                    {currentItems.map((activity) => (
+                                        <div className="activity-item" key={activity.id}>
+                                            <div className="activity-dot" />
+                                            <div className="activity-content">
+                                                <div className="activity-meta">{activity.date}</div>
+                                                <div className="activity-text">{activity.text}</div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                <div className="activity-item">
-                                    <div className="activity-dot" />
-                                    <div>
-                                        <div className="activity-meta">May 28 - 09:12</div>
-                                        <div className="activity-text">Password changed successfully</div>
-                                    </div>
+                                <div className="pagination-container">
+                                    <button
+                                        className="pagination-btn"
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        &larr; Prev
+                                    </button>
+                                    <span className="pagination-info">
+                                        Page <strong>{currentPage}</strong> of {totalPages}
+                                    </span>
+                                    <button
+                                        className="pagination-btn"
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Next &rarr;
+                                    </button>
                                 </div>
                             </section>
                         </main>

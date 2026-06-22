@@ -530,10 +530,10 @@
   border-color: var(--danger) !important;
 }
 
-.error-message {
+/* .error-message {
   color: var(--danger);
   font-size: 0.86rem;
-}
+} */
 
 .modern-phone-input {
   width: 100%;
@@ -699,13 +699,90 @@
   width: 100%;
 }
 
+/* Container track for the strength indicator */
 .password-strength {
-  height: 10px;
-  border-radius: 999px;
-  background: #e5e7eb;
+  width: 100%;
+  height: 6px;
+  background-color: #e2e8f0;
+  /* Light gray track background */
+  border-radius: 4px;
+  margin-top: 12px;
   overflow: hidden;
-  margin: 10px 0 8px;
+  /* Clips the inner moving bar */
 }
+
+/* The actual moving inner bar */
+.strength-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+}
+
+/* Dynamic visual states */
+.strength-bar-fill.empty {
+  width: 0%;
+}
+
+.strength-bar-fill.weak {
+  width: 25%;
+  background-color: #ef4444;
+}
+
+.strength-bar-fill.medium {
+  width: 50%;
+  background-color: #f59e0b;
+}
+
+.strength-bar-fill.strong {
+  width: 75%;
+  background-color: #3b82f6;
+}
+
+.strength-bar-fill.very-strong {
+  width: 100%;
+  background-color: #10b981;
+}
+
+/* Dynamic text color matching */
+.strength-text {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.strength-text.weak strong {
+  color: #ef4444;
+}
+
+.strength-text.medium strong {
+  color: #f59e0b;
+}
+
+.strength-text.strong strong {
+  color: #3b82f6;
+}
+
+.strength-text.very-strong strong {
+  color: #10b981;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #f56565;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-message::before {
+  content: '⚠';
+  margin-right: 0.4rem;
+  font-size: 1rem;
+}
+
 
 .strength-bar {
   width: 45%;
@@ -753,6 +830,129 @@
 .activity-text {
   font-size: 0.98rem;
 }
+
+/* Card Container Base styling if needed */
+.modern-card.activity-card {
+  background: #ffffff;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.activity-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.15rem;
+  color: #1a1f36;
+  font-weight: 600;
+}
+
+/* Timeline vertical track wrapper */
+.activity-timeline {
+  position: relative;
+  padding-left: 8px;
+}
+
+/* Smart connector line */
+.activity-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 8px;
+  bottom: 24px;
+  /* Stops at the center of the last element */
+  width: 2px;
+  background: #e3e8ee;
+}
+
+/* Individual list entries */
+.activity-item {
+  display: flex;
+  position: relative;
+  padding-bottom: 20px;
+}
+
+/* Ensure the last element leaves space for navigation controls */
+.activity-item:last-child {
+  padding-bottom: 12px;
+}
+
+/* Polished Glowing Tracking Dot */
+.activity-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  background: #635bff;
+  /* Tech indigo */
+  border-radius: 50%;
+  margin-top: 6px;
+  z-index: 2;
+  box-shadow: 0 0 0 4px #edf2f7;
+}
+
+.activity-content {
+  margin-left: 16px;
+}
+
+.activity-meta {
+  font-size: 0.75rem;
+  color: #8792a2;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.activity-text {
+  font-size: 0.875rem;
+  color: #3c4257;
+  line-height: 1.4;
+}
+
+/* Modern Pagination Controls Layout */
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f4f6f8;
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: #697386;
+}
+
+.pagination-info strong {
+  color: #1a1f36;
+}
+
+/* Clean, interactive utility buttons */
+.pagination-btn {
+  background: #ffffff;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #486581;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f0f4f8;
+  border-color: #bcccdc;
+  color: #102a43;
+}
+
+.pagination-btn:disabled {
+  background: #f5f7fa;
+  border-color: #e4e7eb;
+  color: #a0aec0;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 
 @media (max-width: 1024px) {
   .dashboard-cards-grid {
